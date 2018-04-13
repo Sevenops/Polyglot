@@ -1,18 +1,17 @@
-let settings = {}
-let isPanelOpen = false
+let settings: Settings = {}
+let isPanelOpen: boolean = false
 const PANEL_ID = 'polyglot__panel'
 
 // Only initialize in a top-level page
 if (window.top === window) {
   window.addEventListener('keypress', handleKeypress, false)
   window.addEventListener('mouseup', handleMouseUp, false)
-
   safari.self.addEventListener('message', handleMessage, false)
   safari.self.tab.dispatchMessage('getSettings')
 }
 
 // Get selected text and return to global script
-function handleMessage(msg) {
+function handleMessage(msg: SafariExtensionMessageEvent): void {
   const name = msg.name
   if (name === 'settingsReceived') {
     settings = msg.message
@@ -25,7 +24,7 @@ function handleMessage(msg) {
   }
 }
 
-function handleMouseUp(e) {
+function handleMouseUp(e: MouseEvent): void {
   const panel = document.getElementById(PANEL_ID)
 
   if (isPanelOpen && !isDescendant(panel, e.target)) {
@@ -33,7 +32,7 @@ function handleMouseUp(e) {
   }
 }
 
-function handleKeypress(e) {
+function handleKeypress(e: KeyboardEvent): void {
   // Check if shortcut key is properly configured
   if (settings.keyValue !== '') {
     const applyMeta = settings.useMetaKey === 'true' ? e.metaKey : true
@@ -49,19 +48,19 @@ function handleKeypress(e) {
   }
 }
 
-function getSelectedText() {
+function getSelectedText(): void {
   const selectedText = window.getSelection().toString()
   safari.self.tab.dispatchMessage('finishedGetSelectedText', selectedText)
 }
 
-function removePanel() {
+function removePanel(): void {
   const panel = document.getElementById(PANEL_ID)
   panel.remove()
   isPanelOpen = false
 }
 
 // Show panel with given text
-function showPanel(content) {
+function showPanel(content: string): boolean {
   if (isPanelOpen) {
     removePanel()
   }
@@ -78,18 +77,20 @@ function showPanel(content) {
   isPanelOpen = true
 }
 
-function updatePanel(content) {
+function updatePanel(content: string): void {
   const el = document.getElementById(PANEL_ID)
   el.innerHTML = content
 }
 
 // Return selection coords
-function getSelectionBoundingRect() {
-  const rect = {
+function getSelectionBoundingRect(): BoundingBox {
+  let rect = <BoundingBox>{
     left: 0,
     top: 0,
     right: 0,
     bottom: 0,
+    width: 0,
+    height: 0,
   }
 
   const sel = document.getSelection()
@@ -118,7 +119,7 @@ function getSelectionBoundingRect() {
   return sel.rangeCount ? rect : null
 }
 
-function isDescendant(parent, child) {
+function isDescendant(parent: Element, child: Element): boolean {
   if (parent === child) {
     return true
   }

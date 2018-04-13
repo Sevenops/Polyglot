@@ -1,4 +1,4 @@
-const { translate } = require('./api')
+import { translate } from './api'
 
 // Get settings
 const settingsKeys = [
@@ -9,7 +9,8 @@ const settingsKeys = [
   'useAltKey',
   'targetLanguage',
 ]
-let settings = {}
+
+let settings = <Settings>{}
 settingsKeys.forEach(key => {
   settings[key] = safari.extension.settings[key]
 })
@@ -20,7 +21,7 @@ safari.application.addEventListener('message', handleMessage, false)
 safari.extension.settings.addEventListener('change', settingsChanged, false)
 
 // Perform commands from users
-function performCommand(event) {
+function performCommand(event: SafariCommandEvent) {
   const { command } = event
   if (command === 'translateSelectedText') {
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('getSelectedText')
@@ -28,7 +29,7 @@ function performCommand(event) {
 }
 
 // Handle message from injected script
-function handleMessage(msg) {
+function handleMessage(msg: SafariExtensionMessageEvent) {
   const { name } = msg
   if (name === 'finishedGetSelectedText') {
     handleFinishedGetSelectedText(msg)
@@ -37,11 +38,11 @@ function handleMessage(msg) {
   }
 }
 
-function handleFinishedGetSelectedText(msg) {
+async function handleFinishedGetSelectedText(msg: SafariExtensionMessageEvent) {
   if (msg.message === '') {
     return
   }
-  const target = msg.target
+  const target = <SafariBrowserTab>msg.target
   target.page.dispatchMessage('showPanel', '<div class="polyglot__loader">Loading</div>')
 
   if (settings.targetLanguage === '') {
@@ -49,21 +50,21 @@ function handleFinishedGetSelectedText(msg) {
     return
   }
 
-  translate(msg.message, settings.targetLanguage)
-    .then(translatedText => {
-      target.page.dispatchMessage('updatePanel', translatedText)
-    })
-    .catch(err => {
-      target.page.dispatchMessage('updatePanel', err)
-    })
+  try {
+    const translatedText = await translate(msg.message, settings.targetLanguage)
+    target.page.dispatchMessage('updatePanel', translatedText)
+  } catch (err) {
+    target.page.dispatchMessage('updatePanel', err)
+  }
 }
 
-function handleGetSettings(msg) {
-  msg.target.page.dispatchMessage('settingsReceived', settings)
+function handleGetSettings(msg: SafariExtensionMessageEvent) {
+  const target = <SafariBrowserTab>msg.target
+  target.page.dispatchMessage('settingsReceived', settings)
 }
 
 // Update setting values immediately
-function settingsChanged(event) {
+function settingsChanged(event: SafariExtensionSettingsChangeEvent) {
   settings[event.key] = event.newValue
   safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
     'settingsReceived',
